@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj" 
+TO ".\Objects\eda_20172761" 
+PRINT(".\Listings\eda_20172761.m51") RAMSIZE(256) 

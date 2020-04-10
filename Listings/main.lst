@@ -1,0 +1,193 @@
+C51 COMPILER V9.54   MAIN                                                                  12/19/2019 17:28:47 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\Objects\main.obj
+COMPILER INVOKED BY: D:\keil5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main.l
+                    -st) TABS(2) OBJECT(.\Objects\main.obj)
+
+line level    source
+
+   1          #include <REG52.H>    
+   2          #include <INTRINS.H> 
+   3          #define GPIO_KEY P1   
+   4          sbit D1=P2^0;
+   5          sbit D2=P2^1;
+   6          sbit D3=P2^2;
+   7          sbit D4=P2^3;
+   8          sbit D5=P2^4;
+   9          sbit D6=P2^5;
+  10          sbit D7=P2^6;
+  11          sbit D8=P2^7;
+  12             
+  13          
+  14          sbit Beep =  P1^5; 
+  15          int KeyValue=100;
+  16          unsigned char n=0;  //n为节拍常数变量 
+  17          //音乐《八月桂花》，格式为: 频率常数, 节拍常数, 频率常数, 节拍常数,
+  18          unsigned char code music_tab[] ={   
+  19          0x18, 0x30, 0x1C , 0x10,  
+  20          0x20, 0x40, 0x1C , 0x10,   
+  21          0x18, 0x10, 0x20 , 0x10,   
+  22          0x1C, 0x10, 0x18 , 0x40,   
+  23          0x1C, 0x20, 0x20 , 0x20,   
+  24          0x1C, 0x20, 0x18 , 0x20,   
+  25          0x20, 0x80, 0x00    
+  26          };  
+  27          
+  28          
+  29          //采用timer0中断0控制节拍 
+  30          void timer0()  interrupt 1      
+  31          {  TH0=0xd8;   
+  32   1         TL0=0xef;   
+  33   1         n--;   
+  34   1      }   
+  35             
+  36          //控制频率延时    
+  37          void delay (unsigned char m)   
+  38          {   
+  39   1       unsigned i=3*m;   
+  40   1       while(--i);   
+  41   1      }   
+  42          
+  43          //毫秒延时子程序   
+  44          void delayms(unsigned char a)      
+  45          {   
+  46   1        while(--a);                     //采用while(--a) 不要采用while(a--);
+  47   1      }   
+  48            
+  49          //按键行列扫描，输出KeyValue范围0~15  
+  50          void KeyDown(void)
+  51          {
+  52   1        char a=0;
+  53   1        GPIO_KEY=0x0f;//输入电平，高四位低电平，低四位高电平
+  54   1        if(GPIO_KEY!=0x0f)//读取按键是否按下
+C51 COMPILER V9.54   MAIN                                                                  12/19/2019 17:28:47 PAGE 2   
+
+  55   1        {
+  56   2          delay(5);//延时消抖
+  57   2          if(GPIO_KEY!=0x0f)//再次检测键盘是否按下
+  58   2          { 
+  59   3            //测试列
+  60   3            GPIO_KEY=0X0F;//输入电平，高四位低电平，低四位高电平  
+  61   3            switch(GPIO_KEY)
+  62   3            {
+  63   4              case(0X07): KeyValue=0;break;
+  64   4              case(0X0b): KeyValue=1;break;
+  65   4              case(0X0d): KeyValue=2;break;
+  66   4              case(0X0e): KeyValue=3;break;
+  67   4            }
+  68   3            //测试行
+  69   3            GPIO_KEY=0XF0;// 输入电平，高四位高电平，低四位低电平
+  70   3            switch(GPIO_KEY)
+  71   3            {
+  72   4              case(0X70): KeyValue=KeyValue;break;
+  73   4              case(0Xb0): KeyValue=KeyValue+4;break;
+  74   4              case(0Xd0): KeyValue=KeyValue+8;break;
+  75   4              case(0Xe0): KeyValue=KeyValue+12;break;
+  76   4            }
+  77   3            while((a<50)&&(GPIO_KEY!=0xf0))  //检测按键松手检测
+  78   3            {
+  79   4              delay(5);
+  80   4              a++;
+  81   4            }
+  82   3          }
+  83   2        }
+  84   1      }
+  85          
+  86          //打开led灯
+  87          void LED(char m)
+  88          {
+  89   1        switch(m)
+  90   1        {
+  91   2          case(0x13):D1=0;break;
+  92   2          case(0x18):D2=0;break;
+  93   2          case(0x1c):D3=0;break;
+  94   2          case(0x20):D4=0;break;
+  95   2          case(0x30):D5=0;break;
+  96   2          case(0x40):D6=0;break;
+  97   2          case(0x80):D7=0;break;
+  98   2        }
+  99   1      }
+ 100          
+ 101          //关闭led灯
+ 102          void off(char m)
+ 103          {
+ 104   1        switch(m)
+ 105   1        {
+ 106   2          case(0x13):D1=1;break;
+ 107   2          case(0x18):D2=1;break;
+ 108   2          case(0x1c):D3=1;break;
+ 109   2          case(0x20):D4=1;break;
+ 110   2          case(0x30):D5=1;break;
+ 111   2          case(0x40):D6=1;break;
+ 112   2          case(0x80):D7=1;break;
+ 113   2        }
+ 114   1      }
+ 115          
+ 116          //播放对应曲目
+C51 COMPILER V9.54   MAIN                                                                  12/19/2019 17:28:47 PAGE 3   
+
+ 117          void playmusic(void)
+ 118          {
+ 119   1        char m,p,i=0;
+ 120   1        TMOD=0x01; //定时器0采用01方式 
+ 121   1        TH0=0xd8;TL0=0xef;   
+ 122   1        IE=0x82;   
+ 123   1      play:   
+ 124   1         while(1)   
+ 125   1          {
+ 126   2          char pm[]={0x13,0x18,0x1C,0x20,0x30,0x40,0x80};
+ 127   2          KeyDown();
+ 128   2          //单个音阶输出
+ 129   2          if(KeyValue>=0&&KeyValue<7)
+ 130   2          {
+ 131   3            m=pm[KeyValue];
+ 132   3            n=0x10;
+ 133   3            TR0=1;
+ 134   3            while(n!=0)
+ 135   3            {
+ 136   4              Beep=~Beep;
+ 137   4              LED(m);
+ 138   4              delay(m);
+ 139   4              off(m);
+ 140   4            }
+ 141   3            TR0=0;
+ 142   3            KeyValue=100;
+ 143   3            break;
+ 144   3          }
+ 145   2          //曲目八月桂花
+ 146   2          if (KeyValue==7)
+ 147   2            {
+ 148   3              a:  p=music_tab[i];   
+ 149   3                if(p==0x00)       { i=0, delayms(1000); goto play;}     //如果碰到结束符,延时1秒,回到开始再来一遍    
+ 150   3                else if(p==0xff)  { i=i+1;delayms(100),TR0=0; goto a;}  //若碰到休止符,延时100ms,继续取下一音符    
+ 151   3                else          {m=music_tab[i++], n=music_tab[i++];}   //取频率常数 和 节拍常数    
+ 152   3                TR0=1;                                                //开定时器1    
+ 153   3                while(n!=0) Beep=~Beep,LED(m),delay(m),off(m);        //等待节拍完成, 通过P1口输出音频
+ 154   3                TR0=0;                                                //关定时器1    
+ 155   3            }
+ 156   2        }
+ 157   1      }
+ 158          
+ 159          
+ 160          
+ 161          void main()   
+ 162          { 
+ 163   1        D8=0;
+ 164   1        playmusic();
+ 165   1      }  
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    513    ----
+   CONSTANT SIZE    =     34    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      3      11
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
